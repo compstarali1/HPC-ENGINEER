@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enfield Dotcom — Maxus Installs • Processor</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
+        :root{--bg:#121212;--card:#1e1e1e;--card-hover:#2a2a2a;--accent:#00b4d8;--done:#10b981;--pending:#f59e0b;--text:#e5e5e5;--muted:#888;--num-col:#2d2d2d}
+        body{background:var(--bg);color:var(--text);line-height:1.5;padding:16px;max-width:850px;margin:0 auto}
+        
+        /* HEADER */
+        .header{background:linear-gradient(135deg,#00b4d8,#007791);padding:20px 24px;border-radius:14px;margin-bottom:16px;text-align:center}
+        .header h1{font-size:1.3rem;margin-bottom:4px}
+        .header p{opacity:0.9;font-size:0.9rem}
+        
+        /* 📥 PASTE AREA */
+        .paste-section{background:var(--card);padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2a2a2a}
+        .paste-section h3{margin-bottom:10px;color:var(--accent);font-size:1rem}
+        .paste-box{width:100%;min-height:140px;padding:14px;border:none;border-radius:8px;background:#252525;color:var(--text);font-size:0.9rem;resize:vertical;outline:none}
+        .paste-box:focus{box-shadow:0 0 0 2px var(--accent)}
+        .btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+        .process-btn{background:var(--accent);color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;flex:1;min-width:140px}
+        .process-btn:hover{background:#0096c7}
+        .clear-btn{background:#444;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-weight:600}
+        .clear-btn:hover{background:#555}
+        
+        /* 📊 STATS — TOP, 3 EQUAL */
+        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;display:none}
+        .stats.visible{display:grid}
+        .stat-card{background:var(--card);padding:16px;border-radius:10px;text-align:center}
+        .stat-card .num{font-size:1.6rem;font-weight:700}
+        .done .num{color:var(--done)}
+        .pending .num{color:var(--pending)}
+        .total .num{color:var(--accent)}
+        
+        /* PROGRESS BAR */
+        .progress-wrap{margin-bottom:16px;display:none}
+        .progress-wrap.visible{display:block}
+        .progress-row{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px}
+        .progress-bar{height:8px;background:#333;border-radius:4px;overflow:hidden}
+        .progress-fill{height:100%;background:linear-gradient(90deg,var(--done),#34d399);border-radius:4px;transition:width 0.4s ease}
+        
+        /* 🔍 SEARCH */
+        .search-wrap{margin-bottom:16px;display:none}
+        .search-wrap.visible{display:block}
+        .search-input{width:100%;padding:13px 18px;border:none;border-radius:10px;background:var(--card);color:var(--text);font-size:1rem;outline:none}
+        .search-input:focus{box-shadow:0 0 0 2px var(--accent)}
+        .search-input::placeholder{color:#666}
+        
+        .section{margin-bottom:24px;display:none}
+        .section.visible{display:block}
+        .section h2{font-size:1.1rem;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #333;display:flex;align-items:center;gap:8px}
+        .pending-section h2{color:var(--pending)}
+        .done-section h2{color:var(--done)}
+        
+        .item{background:var(--card);padding:12px 14px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:all 0.2s}
+        .item:hover{background:var(--card-hover)}
+        .item.hidden{display:none}
+        .item.done{border-left:3px solid var(--done);opacity:0.85}
+        .item.pending{border-left:3px solid var(--pending)}
+        
+        /* NUMBER COLUMN */
+        .line-num{min-width:36px;text-align:center;background:var(--num-col);border-radius:6px;padding:4px 0;font-size:0.85rem;color:#999;font-weight:600}
+        
+        .checkbox{width:22px;height:22px;border:2px solid #555;border-radius:4px;flex-shrink:0;cursor:pointer;display:grid;place-items:center;transition:all 0.2s}
+        .checkbox.checked{background:var(--done);border-color:var(--done)}
+        .checkbox.checked::after{content:'✓';color:#fff;font-weight:bold;font-size:14px}
+        
+        .reg{font-weight:600;font-size:1rem;min-width:110px}
+        .meta{font-size:0.8rem;color:var(--muted)}
+        .item.done .reg{text-decoration:line-through;color:#777}
+        
+        .reset-btn{background:#ef4444;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;margin-top:8px;width:100%;display:none}
+        .reset-btn.visible{display:block}
+        .reset-btn:hover{background:#dc2626}
+        
+        .sample-note{font-size:0.8rem;color:#777;margin-top:8px}
+        .sample-note code{background:#252525;padding:2px 6px;border-radius:4px;color:#ccc}
+        
+        @media(max-width:500px){
+            .stats{gap:10px}
+            .stat-card{padding:12px 10px}
+            .stat-card .num{font-size:1.3rem}
+            .item{flex-wrap:wrap}
+            .meta{width:100%;margin-top:4px;margin-left:48px}
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>🚐 HPC ENGINEERS Registration List Builder</h1>
+        <p>Paste your raw text → Process → Instant Checklist</p>
+    </div>
+
+    <!-- 📥 PASTE & PROCESS BOX -->
+    <div class="paste-section" id="pasteArea">
+        <h3>📥 Paste Raw Text Below</h3>
+        <textarea id="rawTextInput" class="paste-box" placeholder="Paste your full list here — jumbled, mixed, any format...
+
+Example format it finds:
+NX22URV
+NX22URM - DONE
+NX22ULR - DONE
+NX22ULS
+..."></textarea>
+        <div class="btn-row">
+            <button class="process-btn" id="processBtn">⚡ PROCESS & BUILD LIST</button>
+            <button class="clear-btn" id="clearPasteBtn">Clear</button>
+        </div>
+        <p class="sample-note">✅ Auto-detects: <code>NX22URM</code> or <code>NX22URM - DONE</code> or <code>NX22URM - DONE.</code></p>
+    </div>
+
+    <!-- 📊 STATS -->
+    <div class="stats" id="statsArea">
+        <div class="stat-card pending">
+            <div class="num" id="pendingCount">0</div>
+            <div>Pending</div>
+        </div>
+        <div class="stat-card done">
+            <div class="num" id="doneCount">0</div>
+            <div>Done</div>
+        </div>
+        <div class="stat-card total">
+            <div class="num" id="totalCount">0</div>
+            <div>Total</div>
+        </div>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-wrap" id="progressArea">
+        <div class="progress-row">
+            <span>Progress</span>
+            <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- 🔍 SEARCH -->
+    <div class="search-wrap" id="searchArea">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search registration e.g. NX22UL...">
+    </div>
+
+    <!-- ⏳ PENDING LIST -->
+    <div class="section pending-section" id="pendingContainer">
+        <h2>⏳ To Do — Click to Mark Done</h2>
+    </div>
+
+    <!-- ✅ DONE LIST -->
+    <div class="section done-section" id="doneContainer">
+        <h2>✅ Completed</h2>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">🔄 Reset All Progress</button>
+
+<script>
+const pendingContainer = document.getElementById('pendingContainer');
+const doneContainer = document.getElementById('doneContainer');
+const doneCountEl = document.getElementById('doneCount');
+const pendingCountEl = document.getElementById('pendingCount');
+const totalCountEl = document.getElementById('totalCount');
+const progressPctEl = document.getElementById('progressPct');
+const progressBarEl = document.getElementById('progressBar');
+const resetBtn = document.getElementById('resetBtn');
+const searchInput = document.getElementById('searchInput');
+const processBtn = document.getElementById('processBtn');
+const clearPasteBtn = document.getElementById('clearPasteBtn');
+const rawTextInput = document.getElementById('rawTextInput');
+const statsArea = document.getElementById('statsArea');
+const progressArea = document.getElementById('progressArea');
+const searchArea = document.getElementById('searchArea');
+const pasteArea = document.getElementById('pasteArea');
+
+const STORAGE_KEY = 'enfield-maxus-processor';
+let currentRegs = [];
+
+// Extract reg + done status from raw text
+function parseRawText(text) {
+    const regPattern = /\b([A-Z]{2}\d{2}[A-Z0-9]{3})\b/gi;
+    const results = [];
+    let match;
+    
+    while ((match = regPattern.exec(text)) !== null) {
+        const reg = match[1].toUpperCase();
+        const surrounding = text.slice(Math.max(0, match.index - 15), match.index + match[0].length + 15).toUpperCase();
+        const isDone = /- *DONE/i.test(surrounding);
+        results.push({ reg, isDone });
+    }
+    
+    // Remove duplicates keeping first occurrence
+    const seen = new Set();
+    return results.filter(r => {
+        if (seen.has(r.reg)) return false;
+        seen.add(r.reg);
+        return true;
+    });
+}
+
+// Create single item element
+function createItem(reg, isDone, lineNum) {
+    const item = document.createElement('div');
+    item.className = `item ${isDone ? 'done' : 'pending'}`;
+    item.dataset.reg = reg;
+    item.dataset.line = lineNum;
+    
+    item.innerHTML = `
+        <div class="line-num">${lineNum}</div>
+        <div class="checkbox ${isDone ? 'checked' : ''}"></div>
+        <div>
+            <div class="reg">${reg}</div>
+            <div class="meta">Extracted from list</div>
+        </div>
+    `;
+    
+    item.querySelector('.checkbox').addEventListener('click', () => toggleItem(item));
+    return item;
+}
+
+// Build full list from parsed data
+function buildList(regs) {
+    // Clear existing
+    pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
+    doneContainer.innerHTML = '<h2>✅ Completed</h2>';
+    currentRegs = regs;
+    
+    // Load saved state if exists
+    let savedState = {};
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) savedState = JSON.parse(saved);
+    } catch(e) {}
+    
+    let lineNum = 1;
+    
+    // First render pending
+    regs.filter(r => !(savedState[r.reg] ?? r.isDone)).forEach(r => {
+        pendingContainer.appendChild(createItem(r.reg, false, lineNum++));
+    });
+    
+    // Then done at bottom
+    regs.filter(r => savedState[r.reg] ?? r.isDone).forEach(r => {
+        doneContainer.appendChild(createItem(r.reg, true, lineNum++));
+    });
+    
+    // Show all sections
+    statsArea.classList.add('visible');
+    progressArea.classList.add('visible');
+    searchArea.classList.add('visible');
+    pendingContainer.classList.add('visible');
+    doneContainer.classList.add('visible');
+    resetBtn.classList.add('visible');
+    
+    updateStats();
+    filterList();
+}
+
+// Move items between containers
+function moveToPending(item) {
+    item.classList.remove('done');
+    item.classList.add('pending');
+    item.querySelector('.checkbox').classList.remove('checked');
+    pendingContainer.appendChild(item);
+}
+
+function moveToDone(item) {
+    item.classList.remove('pending');
+    item.classList.add('done');
+    item.querySelector('.checkbox').classList.add('checked');
+    doneContainer.appendChild(item);
+}
+
+// Toggle item status
+function toggleItem(item) {
+    if (item.classList.contains('done')) {
+        moveToPending(item);
+    } else {
+        moveToDone(item);
+    }
+    renumberLines();
+    updateStats();
+    saveState();
+}
+
+// Keep line numbers correct after moving
+function renumberLines() {
+    let num = 1;
+    document.querySelectorAll('.item').forEach(item => {
+        item.querySelector('.line-num').textContent = num++;
+        item.dataset.line = num - 1;
+    });
+}
+
+// Update stats display
+function updateStats() {
+    const doneItems = doneContainer.querySelectorAll('.item');
+    const pendingItems = pendingContainer.querySelectorAll('.item');
+    const total = doneItems.length + pendingItems.length;
+    const pct = total > 0 ? Math.round((doneItems.length / total) * 100) : 0;
+    
+    doneCountEl.textContent = doneItems.length;
+    pendingCountEl.textContent = pendingItems.length;
+    totalCountEl.textContent = total;
+    progressPctEl.textContent = pct + '%';
+    progressBarEl.style.width = pct + '%';
+}
+
+// Save state
+function saveState() {
+    const state = {};
+    document.querySelectorAll('.item').forEach(item => {
+        state[item.dataset.reg] = item.classList.contains('done');
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// Search filter
+function filterList() {
+    const query = searchInput.value.trim().toUpperCase();
+    document.querySelectorAll('.item').forEach(item => {
+        const reg = (item.dataset.reg || '').toUpperCase();
+        item.classList.toggle('hidden', query && !reg.includes(query));
+    });
+}
+
+// Process button
+processBtn.addEventListener('click', () => {
+    const text = rawTextInput.value.trim();
+    if (!text) {
+        alert('⚠️ Paste your raw text first!');
+        return;
+    }
+    
+    const regs = parseRawText(text);
+    if (regs.length === 0) {
+        alert('⚠️ No registration numbers found!\nMake sure they look like: NX22URV');
+        return;
+    }
+    
+    // Clear old saved data when processing fresh
+    localStorage.removeItem(STORAGE_KEY);
+    buildList(regs);
+    
+    // Scroll to list
+    statsArea.scrollIntoView({behavior: 'smooth'});
+});
+
+// Clear paste box
+clearPasteBtn.addEventListener('click', () => {
+    rawTextInput.value = '';
+    rawTextInput.focus();
+});
+
+// Reset everything
+resetBtn.addEventListener('click', () => {
+    if (confirm('Reset ALL progress and clear list? This cannot be undone!')) {
+        localStorage.removeItem(STORAGE_KEY);
+        pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
+        doneContainer.innerHTML = '<h2>✅ Completed</h2>';
+        statsArea.classList.remove('visible');
+        progressArea.classList.remove('visible');
+        searchArea.classList.remove('visible');
+        pendingContainer.classList.remove('visible');
+        doneContainer.classList.remove('visible');
+        resetBtn.classList.remove('visible');
+        searchInput.value = '';
+        rawTextInput.value = '';
+        pasteArea.scrollIntoView({behavior: 'smooth'});
+    }
+});
+
+searchInput.addEventListener('input', filterList);
+</script>
+</body>
+</html>
