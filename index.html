@@ -7,12 +7,17 @@
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
         :root{--bg:#121212;--card:#1e1e1e;--card-hover:#2a2a2a;--accent:#00b4d8;--done:#10b981;--pending:#f59e0b;--text:#e5e5e5;--muted:#888;--num-col:#2d2d2d}
-        body{background:var(--bg);color:var(--text);line-height:1.5;padding:16px;max-width:850px;margin:0 auto}
+        body{background:var(--bg);color:var(--text);line-height:1.5;padding:16px;max-width:850px;margin:0 auto;position:relative}
         
-        /* HEADER */
-        .header{background:linear-gradient(135deg,#00b4d8,#007791);padding:20px 24px;border-radius:14px;margin-bottom:16px;text-align:center}
+        /* HEADER WITH TOP-RIGHT RESET */
+        .header-wrapper{position:relative;margin-bottom:16px}
+        .header{background:linear-gradient(135deg,#00b4d8,#007791);padding:20px 24px;border-radius:14px;text-align:center;padding-right:70px}
         .header h1{font-size:1.3rem;margin-bottom:4px}
         .header p{opacity:0.9;font-size:0.9rem}
+        
+        /* 🔄 SMALL RESET BUTTON — TOP RIGHT */
+        .top-reset{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.25);color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-weight:600;z-index:10}
+        .top-reset:hover{background:rgba(220,53,69,0.8)}
         
         /* 📥 PASTE AREA */
         .paste-section{background:var(--card);padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2a2a2a}
@@ -71,9 +76,9 @@
         .meta{font-size:0.8rem;color:var(--muted)}
         .item.done .reg{text-decoration:line-through;color:#777}
         
-        .reset-btn{background:#ef4444;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;margin-top:8px;width:100%;display:none}
-        .reset-btn.visible{display:block}
-        .reset-btn:hover{background:#dc2626}
+        .bottom-reset-btn{background:#ef4444;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;margin-top:8px;width:100%;display:none}
+        .bottom-reset-btn.visible{display:block}
+        .bottom-reset-btn:hover{background:#dc2626}
         
         .sample-note{font-size:0.8rem;color:#777;margin-top:8px}
         .sample-note code{background:#252525;padding:2px 6px;border-radius:4px;color:#ccc}
@@ -84,15 +89,19 @@
             .stat-card .num{font-size:1.3rem}
             .item{flex-wrap:wrap}
             .meta{width:100%;margin-top:4px;margin-left:48px}
+            .header{padding-right:60px}
         }
     </style>
 </head>
 <body>
 
-    <!-- HEADER -->
-    <div class="header">
-        <h1>🚐 HPC ENGINEERS Registration List Builder</h1>
-        <p>Paste your raw text → Process → Instant Checklist</p>
+    <!-- HEADER + TOP-RIGHT RESET BUTTON -->
+    <div class="header-wrapper">
+        <div class="header">
+            <h1>🚐 Enfield Dotcom — Registration List Builder</h1>
+            <p>Paste → Process → Checklist — Saves Automatically</p>
+        </div>
+        <button class="top-reset" id="topResetBtn">🔄 Reset All</button>
     </div>
 
     <!-- 📥 PASTE & PROCESS BOX -->
@@ -100,7 +109,7 @@
         <h3>📥 Paste Raw Text Below</h3>
         <textarea id="rawTextInput" class="paste-box" placeholder="Paste your full list here — jumbled, mixed, any format...
 
-Example format it finds:
+Example:
 NX22URV
 NX22URM - DONE
 NX22ULR - DONE
@@ -110,7 +119,7 @@ NX22ULS
             <button class="process-btn" id="processBtn">⚡ PROCESS & BUILD LIST</button>
             <button class="clear-btn" id="clearPasteBtn">Clear</button>
         </div>
-        <p class="sample-note">✅ Auto-detects: <code>NX22URM</code> or <code>NX22URM - DONE</code> or <code>NX22URM - DONE.</code></p>
+        <p class="sample-note">✅ Auto-detects regs + preserves your setup permanently</p>
     </div>
 
     <!-- 📊 STATS -->
@@ -155,7 +164,7 @@ NX22ULS
         <h2>✅ Completed</h2>
     </div>
 
-    <button class="reset-btn" id="resetBtn">🔄 Reset All Progress</button>
+    <button class="bottom-reset-btn" id="bottomResetBtn">🔄 Reset All Progress & Clear List</button>
 
 <script>
 const pendingContainer = document.getElementById('pendingContainer');
@@ -165,7 +174,8 @@ const pendingCountEl = document.getElementById('pendingCount');
 const totalCountEl = document.getElementById('totalCount');
 const progressPctEl = document.getElementById('progressPct');
 const progressBarEl = document.getElementById('progressBar');
-const resetBtn = document.getElementById('resetBtn');
+const topResetBtn = document.getElementById('topResetBtn');
+const bottomResetBtn = document.getElementById('bottomResetBtn');
 const searchInput = document.getElementById('searchInput');
 const processBtn = document.getElementById('processBtn');
 const clearPasteBtn = document.getElementById('clearPasteBtn');
@@ -175,29 +185,22 @@ const progressArea = document.getElementById('progressArea');
 const searchArea = document.getElementById('searchArea');
 const pasteArea = document.getElementById('pasteArea');
 
-const STORAGE_KEY = 'enfield-maxus-processor';
-let currentRegs = [];
+// 💾 PERSISTENT STORAGE KEY — SAVES EVERYTHING
+const STORAGE_KEY = 'enfield-maxus-persistent-v2';
 
 // Extract reg + done status from raw text
 function parseRawText(text) {
     const regPattern = /\b([A-Z]{2}\d{2}[A-Z0-9]{3})\b/gi;
     const results = [];
     let match;
-    
     while ((match = regPattern.exec(text)) !== null) {
         const reg = match[1].toUpperCase();
         const surrounding = text.slice(Math.max(0, match.index - 15), match.index + match[0].length + 15).toUpperCase();
         const isDone = /- *DONE/i.test(surrounding);
         results.push({ reg, isDone });
     }
-    
-    // Remove duplicates keeping first occurrence
     const seen = new Set();
-    return results.filter(r => {
-        if (seen.has(r.reg)) return false;
-        seen.add(r.reg);
-        return true;
-    });
+    return results.filter(r => seen.has(r.reg) ? false : seen.add(r.reg));
 }
 
 // Create single item element
@@ -206,59 +209,94 @@ function createItem(reg, isDone, lineNum) {
     item.className = `item ${isDone ? 'done' : 'pending'}`;
     item.dataset.reg = reg;
     item.dataset.line = lineNum;
-    
     item.innerHTML = `
         <div class="line-num">${lineNum}</div>
         <div class="checkbox ${isDone ? 'checked' : ''}"></div>
         <div>
             <div class="reg">${reg}</div>
-            <div class="meta">Extracted from list</div>
+            <div class="meta">Registration</div>
         </div>
     `;
-    
     item.querySelector('.checkbox').addEventListener('click', () => toggleItem(item));
     return item;
 }
 
-// Build full list from parsed data
+// 💾 SAVE FULL STATE — list data + all ticks
+function saveFullState() {
+    const items = [];
+    document.querySelectorAll('.item').forEach(item => {
+        items.push({
+            reg: item.dataset.reg,
+            done: item.classList.contains('done')
+        });
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        items: items,
+        rawText: rawTextInput.value
+    }));
+}
+
+// 📂 LOAD FULL STATE — restores everything on open
+function loadFullState() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return false;
+    try {
+        const data = JSON.parse(saved);
+        if (!data.items || !data.items.length) return false;
+        
+        // Restore paste text
+        if (data.rawText) rawTextInput.value = data.rawText;
+        
+        // Build list from saved data
+        let lineNum = 1;
+        data.items.filter(i => !i.done).forEach(item => {
+            pendingContainer.appendChild(createItem(item.reg, false, lineNum++));
+        });
+        data.items.filter(i => i.done).forEach(item => {
+            doneContainer.appendChild(createItem(item.reg, true, lineNum++));
+        });
+        
+        // Show all sections
+        statsArea.classList.add('visible');
+        progressArea.classList.add('visible');
+        searchArea.classList.add('visible');
+        pendingContainer.classList.add('visible');
+        doneContainer.classList.add('visible');
+        bottomResetBtn.classList.add('visible');
+        
+        updateStats();
+        return true;
+    } catch (e) {
+        console.error('Load error:', e);
+        return false;
+    }
+}
+
+// Build fresh list from processed text
 function buildList(regs) {
-    // Clear existing
     pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
     doneContainer.innerHTML = '<h2>✅ Completed</h2>';
-    currentRegs = regs;
-    
-    // Load saved state if exists
-    let savedState = {};
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) savedState = JSON.parse(saved);
-    } catch(e) {}
     
     let lineNum = 1;
-    
-    // First render pending
-    regs.filter(r => !(savedState[r.reg] ?? r.isDone)).forEach(r => {
+    regs.filter(r => !r.isDone).forEach(r => {
         pendingContainer.appendChild(createItem(r.reg, false, lineNum++));
     });
-    
-    // Then done at bottom
-    regs.filter(r => savedState[r.reg] ?? r.isDone).forEach(r => {
+    regs.filter(r => r.isDone).forEach(r => {
         doneContainer.appendChild(createItem(r.reg, true, lineNum++));
     });
     
-    // Show all sections
     statsArea.classList.add('visible');
     progressArea.classList.add('visible');
     searchArea.classList.add('visible');
     pendingContainer.classList.add('visible');
     doneContainer.classList.add('visible');
-    resetBtn.classList.add('visible');
+    bottomResetBtn.classList.add('visible');
     
     updateStats();
-    filterList();
+    saveFullState(); // Save immediately after build
 }
 
-// Move items between containers
+// Move items
 function moveToPending(item) {
     item.classList.remove('done');
     item.classList.add('pending');
@@ -273,19 +311,16 @@ function moveToDone(item) {
     doneContainer.appendChild(item);
 }
 
-// Toggle item status
+// Toggle + Auto-Save
 function toggleItem(item) {
-    if (item.classList.contains('done')) {
-        moveToPending(item);
-    } else {
-        moveToDone(item);
-    }
+    if (item.classList.contains('done')) moveToPending(item);
+    else moveToDone(item);
     renumberLines();
     updateStats();
-    saveState();
+    saveFullState(); // 💾 Saves instantly on every click
 }
 
-// Keep line numbers correct after moving
+// Renumber lines after move
 function renumberLines() {
     let num = 1;
     document.querySelectorAll('.item').forEach(item => {
@@ -294,27 +329,17 @@ function renumberLines() {
     });
 }
 
-// Update stats display
+// Update stats
 function updateStats() {
     const doneItems = doneContainer.querySelectorAll('.item');
     const pendingItems = pendingContainer.querySelectorAll('.item');
     const total = doneItems.length + pendingItems.length;
     const pct = total > 0 ? Math.round((doneItems.length / total) * 100) : 0;
-    
     doneCountEl.textContent = doneItems.length;
     pendingCountEl.textContent = pendingItems.length;
     totalCountEl.textContent = total;
     progressPctEl.textContent = pct + '%';
     progressBarEl.style.width = pct + '%';
-}
-
-// Save state
-function saveState() {
-    const state = {};
-    document.querySelectorAll('.item').forEach(item => {
-        state[item.dataset.reg] = item.classList.contains('done');
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 // Search filter
@@ -326,37 +351,9 @@ function filterList() {
     });
 }
 
-// Process button
-processBtn.addEventListener('click', () => {
-    const text = rawTextInput.value.trim();
-    if (!text) {
-        alert('⚠️ Paste your raw text first!');
-        return;
-    }
-    
-    const regs = parseRawText(text);
-    if (regs.length === 0) {
-        alert('⚠️ No registration numbers found!\nMake sure they look like: NX22URV');
-        return;
-    }
-    
-    // Clear old saved data when processing fresh
-    localStorage.removeItem(STORAGE_KEY);
-    buildList(regs);
-    
-    // Scroll to list
-    statsArea.scrollIntoView({behavior: 'smooth'});
-});
-
-// Clear paste box
-clearPasteBtn.addEventListener('click', () => {
-    rawTextInput.value = '';
-    rawTextInput.focus();
-});
-
-// Reset everything
-resetBtn.addEventListener('click', () => {
-    if (confirm('Reset ALL progress and clear list? This cannot be undone!')) {
+// Full Reset
+function fullReset() {
+    if (confirm('⚠️ Reset ALL — list, ticks, everything?\nThis cannot be undone!')) {
         localStorage.removeItem(STORAGE_KEY);
         pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
         doneContainer.innerHTML = '<h2>✅ Completed</h2>';
@@ -365,14 +362,38 @@ resetBtn.addEventListener('click', () => {
         searchArea.classList.remove('visible');
         pendingContainer.classList.remove('visible');
         doneContainer.classList.remove('visible');
-        resetBtn.classList.remove('visible');
+        bottomResetBtn.classList.remove('visible');
         searchInput.value = '';
         rawTextInput.value = '';
         pasteArea.scrollIntoView({behavior: 'smooth'});
     }
+}
+
+// Process Button
+processBtn.addEventListener('click', () => {
+    const text = rawTextInput.value.trim();
+    if (!text) { alert('⚠️ Paste your raw text first!'); return; }
+    const regs = parseRawText(text);
+    if (!regs.length) { alert('⚠️ No registrations found!\nFormat: NX22URV'); return; }
+    buildList(regs);
+    statsArea.scrollIntoView({behavior: 'smooth'});
 });
 
+// Clear Paste Box
+clearPasteBtn.addEventListener('click', () => {
+    rawTextInput.value = '';
+    rawTextInput.focus();
+});
+
+// Reset Buttons
+topResetBtn.addEventListener('click', fullReset);
+bottomResetBtn.addEventListener('click', fullReset);
+
+// Search
 searchInput.addEventListener('input', filterList);
+
+// 🚀 AUTO-LOAD on page open — restores everything instantly
+window.addEventListener('DOMContentLoaded', loadFullState);
 </script>
 </body>
 </html>
