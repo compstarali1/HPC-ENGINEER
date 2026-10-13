@@ -2,421 +2,646 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enfield Dotcom — Maxus Installs • Processor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HPC — Smart Job Scanner</title>
+    <!-- Tesseract.js from CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
-        :root{--bg:#121212;--card:#1e1e1e;--card-hover:#2a2a2a;--accent:#00b4d8;--done:#10b981;--pending:#f59e0b;--text:#e5e5e5;--muted:#888;--num-col:#2d2d2d}
-        body{background:var(--bg);color:var(--text);line-height:1.5;padding:16px;max-width:850px;margin:0 auto;position:relative}
-        
-        /* HEADER WITH TOP-RIGHT RESET */
-        .header-wrapper{position:relative;margin-bottom:16px}
-        .header{background:linear-gradient(135deg,#00b4d8,#007791);padding:20px 24px;border-radius:14px;text-align:center;padding-right:70px}
-        .header h1{font-size:1.3rem;margin-bottom:4px}
-        .header p{opacity:0.9;font-size:0.9rem}
-        
-        /* 🔄 SMALL RESET BUTTON — TOP RIGHT */
-        .top-reset{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.25);color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-weight:600;z-index:10}
-        .top-reset:hover{background:rgba(220,53,69,0.8)}
-        
-        /* 📥 PASTE AREA */
-        .paste-section{background:var(--card);padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2a2a2a}
-        .paste-section h3{margin-bottom:10px;color:var(--accent);font-size:1rem}
-        .paste-box{width:100%;min-height:140px;padding:14px;border:none;border-radius:8px;background:#252525;color:var(--text);font-size:0.9rem;resize:vertical;outline:none}
-        .paste-box:focus{box-shadow:0 0 0 2px var(--accent)}
-        .btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
-        .process-btn{background:var(--accent);color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;flex:1;min-width:140px}
-        .process-btn:hover{background:#0096c7}
-        .clear-btn{background:#444;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-weight:600}
-        .clear-btn:hover{background:#555}
-        
-        /* 📊 STATS — TOP, 3 EQUAL */
-        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;display:none}
-        .stats.visible{display:grid}
-        .stat-card{background:var(--card);padding:16px;border-radius:10px;text-align:center}
-        .stat-card .num{font-size:1.6rem;font-weight:700}
-        .done .num{color:var(--done)}
-        .pending .num{color:var(--pending)}
-        .total .num{color:var(--accent)}
-        
-        /* PROGRESS BAR */
-        .progress-wrap{margin-bottom:16px;display:none}
-        .progress-wrap.visible{display:block}
-        .progress-row{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px}
-        .progress-bar{height:8px;background:#333;border-radius:4px;overflow:hidden}
-        .progress-fill{height:100%;background:linear-gradient(90deg,var(--done),#34d399);border-radius:4px;transition:width 0.4s ease}
-        
-        /* 🔍 SEARCH */
-        .search-wrap{margin-bottom:16px;display:none}
-        .search-wrap.visible{display:block}
-        .search-input{width:100%;padding:13px 18px;border:none;border-radius:10px;background:var(--card);color:var(--text);font-size:1rem;outline:none}
-        .search-input:focus{box-shadow:0 0 0 2px var(--accent)}
-        .search-input::placeholder{color:#666}
-        
-        .section{margin-bottom:24px;display:none}
-        .section.visible{display:block}
-        .section h2{font-size:1.1rem;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #333;display:flex;align-items:center;gap:8px}
-        .pending-section h2{color:var(--pending)}
-        .done-section h2{color:var(--done)}
-        
-        .item{background:var(--card);padding:12px 14px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:all 0.2s}
-        .item:hover{background:var(--card-hover)}
-        .item.hidden{display:none}
-        .item.done{border-left:3px solid var(--done);opacity:0.85}
-        .item.pending{border-left:3px solid var(--pending)}
-        
-        /* NUMBER COLUMN */
-        .line-num{min-width:36px;text-align:center;background:var(--num-col);border-radius:6px;padding:4px 0;font-size:0.85rem;color:#999;font-weight:600}
-        
-        .checkbox{width:22px;height:22px;border:2px solid #555;border-radius:4px;flex-shrink:0;cursor:pointer;display:grid;place-items:center;transition:all 0.2s}
-        .checkbox.checked{background:var(--done);border-color:var(--done)}
-        .checkbox.checked::after{content:'✓';color:#fff;font-weight:bold;font-size:14px}
-        
-        .reg{font-weight:600;font-size:1rem;min-width:110px}
-        .meta{font-size:0.8rem;color:var(--muted)}
-        .item.done .reg{text-decoration:line-through;color:#777}
-        
-        .bottom-reset-btn{background:#ef4444;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;margin-top:8px;width:100%;display:none}
-        .bottom-reset-btn.visible{display:block}
-        .bottom-reset-btn:hover{background:#dc2626}
-        
-        .sample-note{font-size:0.8rem;color:#777;margin-top:8px}
-        .sample-note code{background:#252525;padding:2px 6px;border-radius:4px;color:#ccc}
-        
-        @media(max-width:500px){
-            .stats{gap:10px}
-            .stat-card{padding:12px 10px}
-            .stat-card .num{font-size:1.3rem}
-            .item{flex-wrap:wrap}
-            .meta{width:100%;margin-top:4px;margin-left:48px}
-            .header{padding-right:60px}
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        :root {
+            --bg: #0b0f1a;
+            --glass: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --text: #f0f4ff;
+            --muted: #9aa6c0;
+            --cyan: #34e7e4;
+            --amber: #ffb347;
+            --green: #2dd4a7;
+            --blue: #5b8cff;
+            --purple: #b983ff;
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            --radius: 24px;
+        }
+        [data-theme="light"] {
+            --bg: #eef2f9;
+            --glass: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --text: #121826;
+            --muted: #3a4356;
+            --shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+            position: relative;
+        }
+        /* floating gradient orbs */
+        .orb {
+            position: fixed;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 0;
+            pointer-events: none;
+            animation: floatOrb 20s infinite alternate ease-in-out;
+        }
+        .orb1 { background: #34e7e4; top: -50px; left: -80px; }
+        .orb2 { background: #b983ff; bottom: -30px; right: -20px; animation-delay: 4s; }
+        .orb3 { background: #ffb347; top: 40%; left: 70%; animation-delay: 8s; }
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, -40px) scale(1.1); }
+        }
+        /* glassmorphism card */
+        .glass {
+            backdrop-filter: blur(16px);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,0.02);
+            transition: transform 0.15s, box-shadow 0.3s;
+        }
+        .glass:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(255,255,255,0.05);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0 20px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo i { font-size: 32px; color: var(--cyan); text-shadow: 0 0 15px var(--cyan); }
+        h1 { font-size: 1.8rem; font-weight: 600; letter-spacing: -0.5px; }
+        /* theme toggle 3D */
+        .theme-toggle {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 60px;
+            width: 60px; height: 60px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.1);
+            position: relative;
+        }
+        .theme-toggle:active { transform: scale(0.85) rotate(10deg); }
+        .theme-toggle:hover { transform: translateY(-3px); box-shadow: 0 18px 30px rgba(0,0,0,0.4); }
+        /* textarea */
+        .input-area {
+            width: 100%;
+            padding: 20px;
+            border-radius: var(--radius);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            color: var(--text);
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 100px;
+            transition: 0.2s;
+        }
+        .input-area:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(52,231,228,0.2); }
+        /* button grid */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .btn {
+            background: var(--glass);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            padding: 12px 22px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1 1 auto;
+            min-width: 110px;
+            justify-content: center;
+        }
+        .btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.2);
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 5px 10px rgba(0,0,0,0.2); }
+        .btn-primary { background: linear-gradient(145deg, #1d3b5c, #0f2338); border-color: #3b6a9e; }
+        .btn-danger { background: linear-gradient(145deg, #542c2c, #2d1515); border-color: #a44; }
+        .btn-scan { background: linear-gradient(145deg, #0f4e4a, #07312e); border-color: #1f8b83; }
+        .btn-floating-scan {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            font-size: 32px;
+            background: linear-gradient(145deg, #e04747, #a53030);
+            border: 2px solid #ff7b7b;
+            box-shadow: 0 10px 30px rgba(255,0,0,0.4);
+            z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+            cursor: pointer;
+            animation: breathe 3s infinite;
+        }
+        @keyframes breathe { 0%{box-shadow:0 0 0 0 rgba(255,0,0,0.4);} 70%{box-shadow:0 0 0 20px rgba(255,0,0,0);} 100%{box-shadow:0 0 0 0 rgba(255,0,0,0);} }
+        .btn-floating-scan:active { transform: scale(0.9); }
+        /* stats */
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            flex: 1;
+            padding: 16px;
+            border-radius: 18px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            text-align: center;
+        }
+        .stat-num { font-size: 2.2rem; font-weight: 700; }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; opacity: 0.7; }
+        .cyan { color: var(--cyan); } .amber { color: var(--amber); } .green { color: var(--green); } .blue { color: var(--blue); }
+        /* sections */
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: var(--radius);
+            background: var(--glass);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+            transition: 0.2s;
+        }
+        .section h2 { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; margin-bottom: 15px; }
+        .item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: 20px;
+            background: rgba(0,0,0,0.1);
+            margin: 8px 0;
+            border-left: 4px solid transparent;
+            transition: 0.2s;
+            word-break: break-all;
+        }
+        .item.found { border-left-color: var(--cyan); background: rgba(52,231,228,0.08); box-shadow: 0 0 20px rgba(52,231,228,0.2); animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0%{box-shadow:0 0 10px rgba(52,231,228,0.1);} 50%{box-shadow:0 0 30px rgba(52,231,228,0.4);} 100%{box-shadow:0 0 10px rgba(52,231,228,0.1);} }
+        .item .actions button { background: transparent; border: none; color: var(--text); margin-left: 10px; cursor: pointer; font-size: 1.2rem; opacity: 0.7; }
+        .item .actions button:hover { opacity: 1; transform: scale(1.2); }
+        .note { font-size: 0.75rem; opacity: 0.6; margin-left: 10px; }
+        /* modal */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            width: 90%; max-width: 500px;
+            padding: 30px;
+            border-radius: 30px;
+            background: var(--bg);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+        }
+        .hidden { display: none; }
+        .toast-container {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 2000;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            padding: 12px 24px;
+            border-radius: 40px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: slideDown 0.4s;
+            font-weight: 500;
+            color: var(--text);
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-30px);} to { opacity: 1; transform: translateY(0);} }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake { 0%,100%{transform: translateX(0);} 25%{transform: translateX(-8px);} 75%{transform: translateX(8px);} }
+        .scanner-frame {
+            width: 100%; aspect-ratio: 4/3; background: black; border-radius: 20px; position: relative;
+            overflow: hidden; border: 2px solid var(--cyan);
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .scan-overlay {
+            position: absolute; inset: 0; pointer-events: none;
+            border: 4px solid rgba(255,0,0,0.6);
+            border-radius: 20px;
+        }
+        .scan-beam { position: absolute; height: 4px; width: 100%; background: linear-gradient(90deg, transparent, #ff0000, transparent); animation: beam 2s infinite; }
+        @keyframes beam { 0%{top: 0;} 50%{top: calc(100% - 4px);} 100%{top: 0;} }
+        /* misc */
+        .flex { display: flex; gap: 12px; align-items: center; }
+        .mt-2 { margin-top: 12px; } .mb-2 { margin-bottom: 12px; }
+        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 600px) {
+            .btn-group .btn { flex-basis: 45%; }
+            .stats { flex-direction: column; }
         }
     </style>
 </head>
-<!-- ================================================== -->
-<!-- VISITOR COUNTER — BOTTOM RIGHT · NUMBERS ONLY      -->
-<!-- Copy this entire block into your HTML file         -->
-<!-- ================================================== -->
+<body data-theme="dark">
+    <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="container">
+        <header>
+            <div class="logo"><i>⌁</i><h1>HPC — Smart Job Scanner</h1></div>
+            <div class="theme-toggle" id="themeToggle">🌙</div>
+        </header>
 
-<!-- STYLES → Paste inside <head> or <style> section -->
-<style>
-.visitor-counter{position:fixed;bottom:15px;right:12px;z-index:9999;font-size:1.65rem;color:#b8a0d8;font-family:'Courier New',monospace;letter-spacing:1px;opacity:.7}
-@media(max-width:600px){.visitor-counter{font-size:1.55rem;bottom:6px;right:8px}}
-</style>
-
-<!-- DISPLAY → Paste right after opening <body> tag -->
-<div class="visitor-counter" id="visitorCount">0</div>
-
-<!-- LOGIC → Paste right before closing </body> tag -->
-<script>
-(function(){const e=document.getElementById("visitorCount");const t="visitor_counter_page_001";let n=parseInt(localStorage.getItem(t)||"0",10);const o=sessionStorage.getItem(t+"_visited");if(!o){n+=1;localStorage.setItem(t,n.toString());sessionStorage.setItem(t+"_visited","true")}e.textContent=n.toLocaleString()})();
-</script>
-
-<!-- ⚠️ For different pages: change "visitor_counter_page_001" to a unique name per page -->
-<!-- ================================================== -->
-
-    
-<body>
-
-    <!-- HEADER + TOP-RIGHT RESET BUTTON -->
-    <div class="header-wrapper">
-        <div class="header">
-            <h1>🚐 Enfield Dotcom — Registration List Builder</h1>
-            <p>Paste → Process → Checklist — Saves Automatically</p>
+        <textarea id="inputArea" class="input-area" placeholder="Paste vehicle registrations here... (one per line or any format)"></textarea>
+        <div class="btn-group">
+            <button class="btn" id="rebuildBtn">⟳ REBUILD</button>
+            <button class="btn btn-danger" id="removeBtn">✕ REMOVE</button>
+            <button class="btn btn-scan" id="scanBtn">📷 SCAN</button>
+            <button class="btn btn-danger" id="resetBtn">⌫ RESET</button>
+            <button class="btn" id="completedBtn">✓ COMPLETED</button>
+            <button class="btn" id="exportBtn">⬇ EXPORT</button>
+            <button class="btn" id="saveBtn">💾 SAVE</button>
+            <button class="btn" id="restoreBtn">⬆ RESTORE</button>
         </div>
-        <button class="top-reset" id="topResetBtn">🔄 Reset All</button>
-    </div>
-
-    <!-- 📥 PASTE & PROCESS BOX -->
-    <div class="paste-section" id="pasteArea">
-        <h3>📥 Paste Raw Text Below</h3>
-        <textarea id="rawTextInput" class="paste-box" placeholder="Paste your full list here — jumbled, mixed, any format...
-
-Example:
-NX22URV
-NX22URM - DONE
-NX22ULR - DONE
-NX22ULS
-..."></textarea>
-        <div class="btn-row">
-            <button class="process-btn" id="processBtn">⚡ PROCESS & BUILD LIST</button>
-            <button class="clear-btn" id="clearPasteBtn">Clear</button>
+        <div class="stats">
+            <div class="stat-card"><div class="stat-num cyan" id="foundCount">0</div><div class="stat-label">FOUND</div></div>
+            <div class="stat-card"><div class="stat-num amber" id="pendingCount">0</div><div class="stat-label">PENDING</div></div>
+            <div class="stat-card"><div class="stat-num green" id="doneCount">0</div><div class="stat-label">DONE</div></div>
+            <div class="stat-card"><div class="stat-num blue" id="totalCount">0</div><div class="stat-label">TOTAL</div></div>
         </div>
-        <p class="sample-note">✅ Auto-detects regs + preserves your setup permanently</p>
-    </div>
 
-    <!-- 📊 STATS -->
-    <div class="stats" id="statsArea">
-        <div class="stat-card pending">
-            <div class="num" id="pendingCount">0</div>
-            <div>Pending</div>
+        <!-- FOUND section -->
+        <div class="section" id="foundSection">
+            <h2>💠 FOUND <span style="font-size:0.8rem; color:var(--cyan);">(scanned)</span></h2>
+            <div id="foundList"></div>
         </div>
-        <div class="stat-card done">
-            <div class="num" id="doneCount">0</div>
-            <div>Done</div>
+        <!-- PENDING -->
+        <div class="section" id="pendingSection">
+            <h2>⏳ PENDING</h2>
+            <div id="pendingList"></div>
         </div>
-        <div class="stat-card total">
-            <div class="num" id="totalCount">0</div>
-            <div>Total</div>
+        <!-- COMPLETED -->
+        <div class="section" id="completedSection">
+            <h2>✅ COMPLETED</h2>
+            <div id="completedList"></div>
         </div>
     </div>
 
-    <!-- PROGRESS BAR -->
-    <div class="progress-wrap" id="progressArea">
-        <div class="progress-row">
-            <span>Progress</span>
-            <span id="progressPct">0%</span>
+    <!-- floating scan button -->
+    <button class="btn-floating-scan" id="floatingScan">📷</button>
+
+    <!-- scanner modal -->
+    <div class="modal hidden" id="scannerModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 10px;">📷 Scan Registration</h3>
+            <div class="scanner-frame">
+                <video id="video" autoplay muted></video>
+                <div class="scan-overlay"></div>
+                <div class="scan-beam"></div>
+            </div>
+            <div class="flex mt-2">
+                <button class="btn btn-small" id="torchBtn">🔦 Torch</button>
+                <button class="btn btn-small btn-danger" id="closeScanner">✕ Close</button>
+            </div>
         </div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressBar" style="width:0%"></div>
+    </div>
+
+    <!-- export modal -->
+    <div class="modal hidden" id="exportModal">
+        <div class="modal-content">
+            <h3>⬇ Export Jobs</h3>
+            <div class="grid-2 mt-2">
+                <button class="btn btn-small" id="exportAll">All</button>
+                <button class="btn btn-small" id="exportCompleted">Completed</button>
+                <button class="btn btn-small" id="exportRemaining">Remaining</button>
+            </div>
+            <button class="btn btn-small mt-2" id="closeExport">Close</button>
         </div>
     </div>
 
-    <!-- 🔍 SEARCH -->
-    <div class="search-wrap" id="searchArea">
-        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search registration e.g. NX22UL...">
-    </div>
+    <script>
+        // ---------- STATE ----------
+        let found = [];
+        let pending = [];
+        let completed = [];
+        let notes = {}; // reg -> note
 
-    <!-- ⏳ PENDING LIST -->
-    <div class="section pending-section" id="pendingContainer">
-        <h2>⏳ To Do — Click to Mark Done</h2>
-    </div>
+        // ---------- DOM ----------
+        const $ = id => document.getElementById(id);
+        const inputArea = $('inputArea');
+        const foundList = $('foundList');
+        const pendingList = $('pendingList');
+        const completedList = $('completedList');
+        const toastContainer = $('toastContainer');
 
-    <!-- ✅ DONE LIST -->
-    <div class="section done-section" id="doneContainer">
-        <h2>✅ Completed</h2>
-    </div>
+        // ---------- TOAST ----------
+        function toast(msg, color = 'var(--text)') {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.style.background = color;
+            t.textContent = msg;
+            toastContainer.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
 
-    <button class="bottom-reset-btn" id="bottomResetBtn">🔄 Reset All Progress & Clear List</button>
+        // ---------- RENDER ----------
+        function updateStats() {
+            $('foundCount').textContent = found.length;
+            $('pendingCount').textContent = pending.length;
+            $('doneCount').textContent = completed.length;
+            $('totalCount').textContent = found.length + pending.length + completed.length;
+        }
+        function render() {
+            foundList.innerHTML = '';
+            pendingList.innerHTML = '';
+            completedList.innerHTML = '';
+            found.forEach(reg => {
+                const div = document.createElement('div');
+                div.className = 'item found';
+                div.innerHTML = `<span>${reg} <span class="note">${notes[reg] ? '📝 ' + notes[reg] : ''}</span></span>
+                <span class="actions"><button onclick="removeItem('${reg}', 'found')">🗑️</button></span>`;
+                foundList.appendChild(div);
+            });
+            pending.forEach(reg => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<span>${reg} <span class="note">${notes[reg] ? '📝 ' + notes[reg] : ''}</span></span>
+                <span class="actions">
+                    <button onclick="markComplete('${reg}')" title="Complete">✅</button>
+                    <button onclick="markRemove('${reg}')" title="Remove">❌</button>
+                </span>`;
+                pendingList.appendChild(div);
+            });
+            completed.forEach(reg => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.style.borderLeftColor = 'var(--green)';
+                div.innerHTML = `<span>${reg} <span class="note">${notes[reg] ? '📝 ' + notes[reg] : ''}</span></span>
+                <span class="actions"><button onclick="restoreItem('${reg}')">↩️</button></span>`;
+                completedList.appendChild(div);
+            });
+            updateStats();
+            localStorage.setItem('hpcData', JSON.stringify({ found, pending, completed, notes }));
+        }
 
-<script>
-const pendingContainer = document.getElementById('pendingContainer');
-const doneContainer = document.getElementById('doneContainer');
-const doneCountEl = document.getElementById('doneCount');
-const pendingCountEl = document.getElementById('pendingCount');
-const totalCountEl = document.getElementById('totalCount');
-const progressPctEl = document.getElementById('progressPct');
-const progressBarEl = document.getElementById('progressBar');
-const topResetBtn = document.getElementById('topResetBtn');
-const bottomResetBtn = document.getElementById('bottomResetBtn');
-const searchInput = document.getElementById('searchInput');
-const processBtn = document.getElementById('processBtn');
-const clearPasteBtn = document.getElementById('clearPasteBtn');
-const rawTextInput = document.getElementById('rawTextInput');
-const statsArea = document.getElementById('statsArea');
-const progressArea = document.getElementById('progressArea');
-const searchArea = document.getElementById('searchArea');
-const pasteArea = document.getElementById('pasteArea');
+        // ---------- PARSING ----------
+        function parseInput() {
+            const text = inputArea.value;
+            const lines = text.split(/\n/);
+            let newPending = [];
+            let extraNotes = [];
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+                const parts = line.split(/[\s,;]+/).filter(Boolean);
+                parts.forEach(part => {
+                    const upp = part.toUpperCase();
+                    if (/^[A-Z]{1,3}[0-9]{1,4}[A-Z]{0,3}$/.test(upp) || /^[0-9]{2,4}[A-Z]{2,3}$/.test(upp)) {
+                        if (!pending.includes(upp) && !found.includes(upp) && !completed.includes(upp)) {
+                            newPending.push(upp);
+                        }
+                    } else {
+                        extraNotes.push(part);
+                    }
+                });
+            });
+            if (newPending.length) {
+                pending = [...new Set([...pending, ...newPending])];
+                toast(`➕ Added ${newPending.length} registrations`);
+            }
+            if (extraNotes.length) {
+                // save as note for first pending (or global)
+                notes['_global'] = extraNotes.join(' ');
+                toast('📌 Note saved');
+            }
+            render();
+        }
 
-// 💾 PERSISTENT STORAGE KEY — SAVES EVERYTHING
-const STORAGE_KEY = 'enfield-maxus-persistent-v2';
+        // ---------- ACTIONS ----------
+        window.removeItem = (reg, list) => {
+            if (list === 'found') found = found.filter(r => r !== reg);
+            if (list === 'pending') pending = pending.filter(r => r !== reg);
+            if (list === 'completed') completed = completed.filter(r => r !== reg);
+            toast(`🗑️ ${reg} removed`);
+            render();
+        };
+        window.markComplete = (reg) => {
+            pending = pending.filter(r => r !== reg);
+            if (!completed.includes(reg)) completed.push(reg);
+            toast(`✅ ${reg} completed`, 'var(--green)');
+            render();
+        };
+        window.markRemove = (reg) => {
+            pending = pending.filter(r => r !== reg);
+            toast(`❌ ${reg} removed`, 'var(--red)');
+            render();
+        };
+        window.restoreItem = (reg) => {
+            completed = completed.filter(r => r !== reg);
+            if (!pending.includes(reg)) pending.push(reg);
+            toast(`↩️ ${reg} restored`);
+            render();
+        };
 
-// Extract reg + done status from raw text
-function parseRawText(text) {
-    const regPattern = /\b([A-Z]{2}\d{2}[A-Z0-9]{3})\b/gi;
-    const results = [];
-    let match;
-    while ((match = regPattern.exec(text)) !== null) {
-        const reg = match[1].toUpperCase();
-        const surrounding = text.slice(Math.max(0, match.index - 15), match.index + match[0].length + 15).toUpperCase();
-        const isDone = /- *DONE/i.test(surrounding);
-        results.push({ reg, isDone });
-    }
-    const seen = new Set();
-    return results.filter(r => seen.has(r.reg) ? false : seen.add(r.reg));
-}
+        // REBUILD
+        $('rebuildBtn').onclick = () => {
+            const confirmed = confirm('Rebuild from textarea?');
+            if (!confirmed) return;
+            parseInput();
+        };
+        // REMOVE (remove selected? we just remove all pending? we'll clear found? Actually remove all from pending)
+        $('removeBtn').onclick = () => {
+            if (pending.length === 0) return toast('No pending to remove');
+            if (confirm('Remove all pending items?')) {
+                pending = [];
+                toast('Pending cleared');
+                render();
+            }
+        };
+        // RESET
+        $('resetBtn').onclick = () => {
+            if (confirm('Reset all data?')) {
+                found = []; pending = []; completed = []; notes = {};
+                render();
+                toast('♻️ Data reset');
+            }
+        };
+        // COMPLETED (view completed section)
+        $('completedBtn').onclick = () => {
+            $('completedSection').scrollIntoView({ behavior: 'smooth' });
+        };
+        // SCAN (open modal)
+        $('scanBtn').onclick = openScanner;
+        $('floatingScan').onclick = openScanner;
 
-// Create single item element
-function createItem(reg, isDone, lineNum) {
-    const item = document.createElement('div');
-    item.className = `item ${isDone ? 'done' : 'pending'}`;
-    item.dataset.reg = reg;
-    item.dataset.line = lineNum;
-    item.innerHTML = `
-        <div class="line-num">${lineNum}</div>
-        <div class="checkbox ${isDone ? 'checked' : ''}"></div>
-        <div>
-            <div class="reg">${reg}</div>
-            <div class="meta">Registration</div>
-        </div>
-    `;
-    item.querySelector('.checkbox').addEventListener('click', () => toggleItem(item));
-    return item;
-}
+        // EXPORT
+        $('exportBtn').onclick = () => $('exportModal').classList.remove('hidden');
+        $('closeExport').onclick = () => $('exportModal').classList.add('hidden');
+        $('exportAll').onclick = () => downloadTxt('ALL', [...found, ...pending, ...completed]);
+        $('exportCompleted').onclick = () => downloadTxt('COMPLETED', completed);
+        $('exportRemaining').onclick = () => downloadTxt('REMAINING', [...found, ...pending]);
+        function downloadTxt(type, data) {
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+            const content = data.join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `HPC-TYPE-${dateStr}.txt`;
+            a.click();
+            toast('⬇ Export downloaded');
+            $('exportModal').classList.add('hidden');
+        }
 
-// 💾 SAVE FULL STATE — list data + all ticks
-function saveFullState() {
-    const items = [];
-    document.querySelectorAll('.item').forEach(item => {
-        items.push({
-            reg: item.dataset.reg,
-            done: item.classList.contains('done')
+        // SAVE (json)
+        $('saveBtn').onclick = () => {
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+            const data = { found, pending, completed, notes };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `HPC-LAYOUT-SAVED-${dateStr}.json`;
+            a.click();
+            toast('💾 Saved JSON');
+        };
+        // RESTORE
+        $('restoreBtn').onclick = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    try {
+                        const obj = JSON.parse(ev.target.result);
+                        found = obj.found || [];
+                        pending = obj.pending || [];
+                        completed = obj.completed || [];
+                        notes = obj.notes || {};
+                        render();
+                        toast('⬆ Restored from file');
+                    } catch {
+                        toast('⚠️ Invalid file');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        };
+
+        // ---------- SCANNER ----------
+        let stream = null;
+        function openScanner() {
+            $('scannerModal').classList.remove('hidden');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(s => {
+                    stream = s;
+                    $('video').srcObject = s;
+                    startOCR();
+                }).catch(() => toast('Camera unavailable'));
+        }
+        function startOCR() {
+            const video = $('video');
+            const recognize = async () => {
+                if (!video.srcObject) return;
+                try {
+                    const { data: { text } } = await Tesseract.recognize(video, 'eng');
+                    const regs = text.match(/([A-Z]{1,3}[0-9]{1,4}[A-Z]{0,3})/g);
+                    if (regs) {
+                        const reg = regs[0].toUpperCase();
+                        if (found.includes(reg)) {
+                            toast(`⚠️ Duplicate ${reg}`, 'var(--amber)');
+                            $('scannerModal').querySelector('.modal-content').classList.add('shake');
+                            setTimeout(() => document.querySelector('.modal-content')?.classList.remove('shake'), 500);
+                        } else {
+                            found.push(reg);
+                            toast(`🔊 ${reg} FOUND!`, 'var(--cyan)');
+                            render();
+                            setTimeout(() => { closeScanner(); scrollToFound(reg); }, 500);
+                            return;
+                        }
+                    }
+                } catch(e) {}
+                setTimeout(recognize, 2000);
+            };
+            recognize();
+        }
+        function scrollToFound(reg) {
+            const items = document.querySelectorAll('#foundList .item');
+            items.forEach(item => {
+                if (item.textContent.includes(reg)) item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+        function closeScanner() {
+            $('scannerModal').classList.add('hidden');
+            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+        }
+        $('closeScanner').onclick = closeScanner;
+        $('torchBtn').onclick = () => {
+            const track = stream?.getVideoTracks()[0];
+            if (track) track.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>toast('Torch not supported'));
+        };
+
+        // ---------- THEME ----------
+        $('themeToggle').onclick = () => {
+            const root = document.documentElement;
+            const cur = root.dataset.theme;
+            const next = cur === 'dark' ? 'light' : 'dark';
+            root.dataset.theme = next;
+            $('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+        };
+
+        // ---------- INIT ----------
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('hpcData');
+            if (saved) {
+                try {
+                    const obj = JSON.parse(saved);
+                    found = obj.found || [];
+                    pending = obj.pending || [];
+                    completed = obj.completed || [];
+                    notes = obj.notes || {};
+                } catch(e) {}
+            }
+            render();
         });
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        items: items,
-        rawText: rawTextInput.value
-    }));
-}
-
-// 📂 LOAD FULL STATE — restores everything on open
-function loadFullState() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return false;
-    try {
-        const data = JSON.parse(saved);
-        if (!data.items || !data.items.length) return false;
-        
-        // Restore paste text
-        if (data.rawText) rawTextInput.value = data.rawText;
-        
-        // Build list from saved data
-        let lineNum = 1;
-        data.items.filter(i => !i.done).forEach(item => {
-            pendingContainer.appendChild(createItem(item.reg, false, lineNum++));
-        });
-        data.items.filter(i => i.done).forEach(item => {
-            doneContainer.appendChild(createItem(item.reg, true, lineNum++));
-        });
-        
-        // Show all sections
-        statsArea.classList.add('visible');
-        progressArea.classList.add('visible');
-        searchArea.classList.add('visible');
-        pendingContainer.classList.add('visible');
-        doneContainer.classList.add('visible');
-        bottomResetBtn.classList.add('visible');
-        
-        updateStats();
-        return true;
-    } catch (e) {
-        console.error('Load error:', e);
-        return false;
-    }
-}
-
-// Build fresh list from processed text
-function buildList(regs) {
-    pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
-    doneContainer.innerHTML = '<h2>✅ Completed</h2>';
-    
-    let lineNum = 1;
-    regs.filter(r => !r.isDone).forEach(r => {
-        pendingContainer.appendChild(createItem(r.reg, false, lineNum++));
-    });
-    regs.filter(r => r.isDone).forEach(r => {
-        doneContainer.appendChild(createItem(r.reg, true, lineNum++));
-    });
-    
-    statsArea.classList.add('visible');
-    progressArea.classList.add('visible');
-    searchArea.classList.add('visible');
-    pendingContainer.classList.add('visible');
-    doneContainer.classList.add('visible');
-    bottomResetBtn.classList.add('visible');
-    
-    updateStats();
-    saveFullState(); // Save immediately after build
-}
-
-// Move items
-function moveToPending(item) {
-    item.classList.remove('done');
-    item.classList.add('pending');
-    item.querySelector('.checkbox').classList.remove('checked');
-    pendingContainer.appendChild(item);
-}
-
-function moveToDone(item) {
-    item.classList.remove('pending');
-    item.classList.add('done');
-    item.querySelector('.checkbox').classList.add('checked');
-    doneContainer.appendChild(item);
-}
-
-// Toggle + Auto-Save
-function toggleItem(item) {
-    if (item.classList.contains('done')) moveToPending(item);
-    else moveToDone(item);
-    renumberLines();
-    updateStats();
-    saveFullState(); // 💾 Saves instantly on every click
-}
-
-// Renumber lines after move
-function renumberLines() {
-    let num = 1;
-    document.querySelectorAll('.item').forEach(item => {
-        item.querySelector('.line-num').textContent = num++;
-        item.dataset.line = num - 1;
-    });
-}
-
-// Update stats
-function updateStats() {
-    const doneItems = doneContainer.querySelectorAll('.item');
-    const pendingItems = pendingContainer.querySelectorAll('.item');
-    const total = doneItems.length + pendingItems.length;
-    const pct = total > 0 ? Math.round((doneItems.length / total) * 100) : 0;
-    doneCountEl.textContent = doneItems.length;
-    pendingCountEl.textContent = pendingItems.length;
-    totalCountEl.textContent = total;
-    progressPctEl.textContent = pct + '%';
-    progressBarEl.style.width = pct + '%';
-}
-
-// Search filter
-function filterList() {
-    const query = searchInput.value.trim().toUpperCase();
-    document.querySelectorAll('.item').forEach(item => {
-        const reg = (item.dataset.reg || '').toUpperCase();
-        item.classList.toggle('hidden', query && !reg.includes(query));
-    });
-}
-
-// Full Reset
-function fullReset() {
-    if (confirm('⚠️ Reset ALL — list, ticks, everything?\nThis cannot be undone!')) {
-        localStorage.removeItem(STORAGE_KEY);
-        pendingContainer.innerHTML = '<h2>⏳ To Do — Click to Mark Done</h2>';
-        doneContainer.innerHTML = '<h2>✅ Completed</h2>';
-        statsArea.classList.remove('visible');
-        progressArea.classList.remove('visible');
-        searchArea.classList.remove('visible');
-        pendingContainer.classList.remove('visible');
-        doneContainer.classList.remove('visible');
-        bottomResetBtn.classList.remove('visible');
-        searchInput.value = '';
-        rawTextInput.value = '';
-        pasteArea.scrollIntoView({behavior: 'smooth'});
-    }
-}
-
-// Process Button
-processBtn.addEventListener('click', () => {
-    const text = rawTextInput.value.trim();
-    if (!text) { alert('⚠️ Paste your raw text first!'); return; }
-    const regs = parseRawText(text);
-    if (!regs.length) { alert('⚠️ No registrations found!\nFormat: NX22URV'); return; }
-    buildList(regs);
-    statsArea.scrollIntoView({behavior: 'smooth'});
-});
-
-// Clear Paste Box
-clearPasteBtn.addEventListener('click', () => {
-    rawTextInput.value = '';
-    rawTextInput.focus();
-});
-
-// Reset Buttons
-topResetBtn.addEventListener('click', fullReset);
-bottomResetBtn.addEventListener('click', fullReset);
-
-// Search
-searchInput.addEventListener('input', filterList);
-
-// 🚀 AUTO-LOAD on page open — restores everything instantly
-window.addEventListener('DOMContentLoaded', loadFullState);
-</script>
+    </script>
 </body>
 </html>
